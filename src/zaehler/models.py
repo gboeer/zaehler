@@ -74,8 +74,11 @@ class Price(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     meter_id = Column(Integer, ForeignKey("meters.id"), nullable=False)
     valid_from = Column(Date, nullable=False)
-    price_per_unit = Column(Float, nullable=False)   # €/kWh, €/m³
+    price_per_unit = Column(Float, nullable=False)     # €/kWh (immer kWh-Basis)
     base_price_per_month = Column(Float, default=0.0)  # Grundgebühr €/Monat
+    # Gas-spezifisch: Umrechnung m³ → kWh  (kWh = m³ × z_zahl × brennwert)
+    brennwert = Column(Float, nullable=True)   # Hs in kWh/m³, z.B. 10.58
+    z_zahl = Column(Float, nullable=True)      # Zustandszahl, z.B. 0.9640
     note = Column(Text, nullable=True)
     created_at = Column(DateTime, default=func.now())
 

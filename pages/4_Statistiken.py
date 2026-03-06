@@ -8,7 +8,7 @@ import plotly.express as px
 import streamlit as st
 
 from zaehler.database import get_session
-from zaehler.models import Meter, Price, Reading
+from zaehler.models import Meter, MeterType, Price, Reading
 from zaehler.utils.calculations import compute_consumption, compute_costs, resample_consumption
 
 st.set_page_config(page_title="Statistiken", page_icon="📊", layout="wide")
@@ -25,6 +25,7 @@ if not meters:
 meter_options = {f"{m.name} ({m.meter_type.value})": m for m in meters}
 selected_label = st.selectbox("Zähler auswählen", list(meter_options.keys()))
 meter = meter_options[selected_label]
+is_gas = meter.meter_type == MeterType.GAS
 
 readings = (
     session.query(Reading)
@@ -74,15 +75,30 @@ col4.metric("Min. Periode", f"{min_period:,.2f} {meter.unit}")
 prices = session.query(Price).filter(Price.meter_id == meter.id).all()
 if prices:
     prices_df = pd.DataFrame(
-        [{"valid_from": p.valid_from, "price_per_unit": p.price_per_unit, "base_price_per_month": p.base_price_per_month}
-         for p in prices]
+        [
+            {
+                "valid_from": p.valid_from,
+                "price_per_unit": p.price_per_unit,
+                "base_price_per_month": p.base_price_per_month,
+                "brennwert": p.brennwert,
+                "z_zahl": p.z_zahl,
+            }
+            for p in prices
+        ]
     )
     total_days = int(df_filtered["days"].sum()) if "days" in df_filtered.columns else None
-    cost_info = compute_costs(total, date_to, prices_df, days=total_days)
+    cost_info = compute_costs(total, date_to, prices_df, days=total_days, is_gas=is_gas)
     if cost_info["total_cost"] is not None:
         st.subheader("Kosten (Schätzung)")
+        if is_gas and cost_info["kwh"] is not None:
+            st.caption(
+                f"Umrechnung: {total:,.2f} m³ × {cost_info['z_zahl']:.4f} (Z) × "
+                f"{cost_info['brennwert']:.3f} (Hs) = **{cost_info['kwh']:,.2f} kWh**"
+            )
+            # Zusätzliche kWh-Kennzahl einblenden
+            col1.metric("Gesamtverbrauch (kWh)", f"{cost_info['kwh']:,.2f} kWh")
         c1, c2, c3 = st.columns(3)
-        c1.metric("Arbeitspreis", f"{cost_info['consumption_cost']:,.2f} €")
+        c1.metric("Arbeitskosten", f"{cost_info['consumption_cost']:,.2f} €")
         c2.metric("Grundgebühr (Periode)", f"{cost_info['base_price']:,.2f} €")
         c3.metric("Gesamt", f"{cost_info['total_cost']:,.2f} €")
 
