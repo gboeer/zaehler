@@ -115,12 +115,79 @@ def compute_costs(
     }
 
 
-def resample_consumption(consumption_df: pd.DataFrame, freq: str = "ME") -> pd.DataFrame:
+def interpolate_daily(readings_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Aggregiert Verbrauchsdaten nach Zeitraum.
+    Erstellt eine tägliche Zeitreihe durch lineare Interpolation zwischen Ablesungen.
+
+    Erwartet Spalten: reading_date, value.
+
+    Gibt ein DataFrame zurück mit:
+        - date                (datetime, jeden Tag)
+        - value               (interpolierter Zählerstand)
+        - daily_consumption   (Verbrauch dieses Tages, = konstant innerhalb einer Periode)
+    """
+    if readings_df.empty or len(readings_df) < 2:
+        return pd.DataFrame(columns=["date", "value", "daily_consumption"])
+
+    df = readings_df.copy()
+    df["reading_date"] = pd.to_datetime(df["reading_date"])
+    df = df.sort_values("reading_date").drop_duplicates("reading_date")
+    df = df.set_index("reading_date")[["value"]]
+
+    # Tägliche Zeitreihe aufspannen und linear interpolieren
+    daily_index = pd.date_range(df.index.min(), df.index.max(), freq="D")
+    daily = df.reindex(daily_index)
+    daily["value"] = daily["value"].interpolate(method="time")
+
+    daily = daily.reset_index().rename(columns={"index": "date"})
+    daily["daily_consumption"] = daily["value"].diff().clip(lower=0)
+    return daily
+
+
+def resample_daily(daily_df: pd.DataFrame, freq: str = "ME") -> pd.DataFrame:
+    """
+    Aggregiert eine tägliche Zeitreihe (aus interpolate_daily) nach Zeitraum.
+
+    Vorteil gegenüber resample_consumption: jeder Tag ist gleichwertig gewichtet,
+    unabhängig von der Unregelmäßigkeit der Ablesungen.
 
     freq: 'ME' = Monat, 'QE' = Quartal, 'YE' = Jahr
-    Erwartet Spalten: reading_date, consumption
+    """
+    if daily_df.empty:
+        return pd.DataFrame(columns=["period", "consumption"])
+
+    df = daily_df.copy()
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.set_index("date")
+    resampled = df["daily_consumption"].resample(freq).sum().reset_index()
+    resampled.columns = ["period", "consumption"]
+    return resampled
+
+
+def rolling_daily_avg(daily_df: pd.DataFrame, window: int = 30) -> pd.DataFrame:
+    """
+    Berechnet einen gleitenden Durchschnitt des täglichen Verbrauchs.
+
+    window: Fenstergröße in Tagen (z.B. 7, 30, 90)
+    Gibt Spalten zurück: date, daily_consumption, rolling_avg
+    """
+    if daily_df.empty:
+        return daily_df
+
+    df = daily_df.copy()
+    df["rolling_avg"] = (
+        df["daily_consumption"]
+        .rolling(window=window, center=True, min_periods=max(1, window // 4))
+        .mean()
+    )
+    return df
+
+
+def resample_consumption(consumption_df: pd.DataFrame, freq: str = "ME") -> pd.DataFrame:
+    """
+    Aggregiert Verbrauchsdaten nach Zeitraum (Perioden-basiert, Legacy).
+
+    Für neue Plots bevorzuge resample_daily() auf Basis von interpolate_daily().
     """
     if consumption_df.empty or "consumption" not in consumption_df.columns:
         return pd.DataFrame()
