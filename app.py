@@ -22,15 +22,18 @@ st.markdown("Übersicht über alle Zähler und letzten Ablesungen.")
 
 session = get_session()
 
-meters = session.query(Meter).filter(Meter.active == 1).all()
+all_meters = session.query(Meter).filter(Meter.active == 1).all()
 
-if not meters:
+if not all_meters:
     st.info("Noch keine Zähler angelegt. Lege zuerst einen Zähler unter **Zähler verwalten** an.")
     st.stop()
 
 TYPE_ICONS = {"Strom": "⚡", "Gas": "🔥", "Wasser": "💧"}
 
-for meter in meters:
+hauptzaehler = [m for m in all_meters if m.parent_id is None]
+
+
+def render_meter_card(meter: Meter, indent: bool = False):
     icon = TYPE_ICONS.get(meter.meter_type.value, "📊")
     readings = (
         session.query(Reading)
@@ -40,14 +43,17 @@ for meter in meters:
         .all()
     )
 
+    prefix = "↳ " if indent else ""
     with st.container(border=True):
         col1, col2, col3 = st.columns([2, 1, 1])
         with col1:
-            st.subheader(f"{icon} {meter.name}")
+            st.subheader(f"{prefix}{icon} {meter.name}")
             if meter.meter_number:
                 st.caption(f"Zählernummer: {meter.meter_number}")
             if meter.location:
                 st.caption(f"Standort: {meter.location}")
+            if indent:
+                st.caption("Unterzähler")
 
         if readings:
             latest = readings[0]
@@ -55,7 +61,6 @@ for meter in meters:
                 st.metric(
                     label="Letzter Stand",
                     value=f"{latest.value:,.2f} {meter.unit}",
-                    delta=None,
                 )
                 st.caption(f"vom {latest.reading_date.strftime('%d.%m.%Y')}")
 
@@ -71,12 +76,46 @@ for meter in meters:
             with col2:
                 st.info("Noch keine Ablesungen.")
 
+
+# Zähler als Baum anzeigen: Hauptzähler + eingerückte Unterzähler
+for hm in hauptzaehler:
+    render_meter_card(hm, indent=False)
+    unterzaehler = [m for m in all_meters if m.parent_id == hm.id]
+    if unterzaehler:
+        cols = st.columns(len(unterzaehler))
+        for col, um in zip(cols, unterzaehler):
+            with col:
+                icon = TYPE_ICONS.get(um.meter_type.value, "📊")
+                readings = (
+                    session.query(Reading)
+                    .filter(Reading.meter_id == um.id)
+                    .order_by(Reading.reading_date.desc())
+                    .limit(2)
+                    .all()
+                )
+                with st.container(border=True):
+                    st.markdown(f"↳ {icon} **{um.name}**")
+                    if um.meter_number:
+                        st.caption(f"Nr: {um.meter_number}")
+                    if readings:
+                        latest = readings[0]
+                        st.metric(
+                            "Letzter Stand",
+                            f"{latest.value:,.2f} {um.unit}",
+                        )
+                        st.caption(f"vom {latest.reading_date.strftime('%d.%m.%Y')}")
+                        if len(readings) == 2:
+                            diff = readings[0].value - readings[1].value
+                            st.metric("Letzte Periode", f"{diff:,.2f} {um.unit}")
+                    else:
+                        st.info("Keine Ablesungen")
+
 st.divider()
 
-# Schnellübersicht: Verbrauch letzter 12 Monate
+# Verbrauchsübersicht letzte 12 Monate (nur Hauptzähler)
 st.subheader("Verbrauchsübersicht (letzte 12 Monate)")
 
-for meter in meters:
+for meter in all_meters:
     readings = (
         session.query(Reading)
         .filter(Reading.meter_id == meter.id)
@@ -100,11 +139,13 @@ for meter in meters:
         continue
 
     icon = TYPE_ICONS.get(meter.meter_type.value, "📊")
+    is_child = meter.parent_id is not None
+    title = f"{'↳ ' if is_child else ''}{icon} {meter.name}"
     fig = px.bar(
         df,
         x="reading_date",
         y="consumption",
-        title=f"{icon} {meter.name}",
+        title=title,
         labels={"reading_date": "Datum", "consumption": f"Verbrauch ({meter.unit})"},
     )
     fig.update_layout(showlegend=False, margin=dict(t=40, b=20))

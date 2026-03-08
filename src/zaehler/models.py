@@ -13,7 +13,7 @@ from sqlalchemy import (
     Text,
     func,
 )
-from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.orm import DeclarativeBase, backref, relationship
 
 
 class Base(DeclarativeBase):
@@ -38,10 +38,18 @@ class Meter(Base):
     unit = Column(String(20), nullable=False)  # kWh, m³, etc.
     location = Column(String(200), nullable=True)
     active = Column(Integer, default=1)  # 1 = aktiv, 0 = inaktiv
+    parent_id = Column(Integer, ForeignKey("meters.id"), nullable=True)  # Hauptzähler
     created_at = Column(DateTime, default=func.now())
 
     readings = relationship("Reading", back_populates="meter", cascade="all, delete-orphan")
     prices = relationship("Price", back_populates="meter", cascade="all, delete-orphan")
+    # Unterzähler: children → Liste der direkt untergeordneten Zähler
+    # parent   → der übergeordnete Hauptzähler (via backref)
+    children = relationship(
+        "Meter",
+        backref=backref("parent", remote_side="[Meter.id]"),
+        foreign_keys="[Meter.parent_id]",
+    )
 
     def __repr__(self):
         return f"<Meter {self.name} ({self.meter_type})>"

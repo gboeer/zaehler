@@ -28,6 +28,15 @@ def _migrate(engine):
         ]:
             if col not in existing:
                 conn.execute(text(f"ALTER TABLE prices ADD COLUMN {col} {definition}"))
+
+        # meters-Tabelle
+        meters_cols = {
+            row[1]
+            for row in conn.execute(text("PRAGMA table_info(meters)")).fetchall()
+        }
+        if "parent_id" not in meters_cols:
+            conn.execute(text("ALTER TABLE meters ADD COLUMN parent_id INTEGER REFERENCES meters(id)"))
+
         conn.commit()
 
 
