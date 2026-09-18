@@ -91,7 +91,7 @@ def compute_costs(
     if is_gas:
         brennwert_val = row.get("brennwert") if "brennwert" in row.index else None
         z_zahl_val = row.get("z_zahl") if "z_zahl" in row.index else None
-        if brennwert_val and z_zahl_val:
+        if pd.notna(brennwert_val) and pd.notna(z_zahl_val):
             kwh = m3_to_kwh(consumption, z_zahl_val, brennwert_val)
             # Preis ist in €/kWh, Verbrauch jetzt in kWh
             consumption_cost = kwh * price_per_unit

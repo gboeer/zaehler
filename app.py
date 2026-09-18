@@ -85,30 +85,7 @@ for hm in hauptzaehler:
         cols = st.columns(len(unterzaehler))
         for col, um in zip(cols, unterzaehler):
             with col:
-                icon = TYPE_ICONS.get(um.meter_type.value, "📊")
-                readings = (
-                    session.query(Reading)
-                    .filter(Reading.meter_id == um.id)
-                    .order_by(Reading.reading_date.desc())
-                    .limit(2)
-                    .all()
-                )
-                with st.container(border=True):
-                    st.markdown(f"↳ {icon} **{um.name}**")
-                    if um.meter_number:
-                        st.caption(f"Nr: {um.meter_number}")
-                    if readings:
-                        latest = readings[0]
-                        st.metric(
-                            "Letzter Stand",
-                            f"{latest.value:,.2f} {um.unit}",
-                        )
-                        st.caption(f"vom {latest.reading_date.strftime('%d.%m.%Y')}")
-                        if len(readings) == 2:
-                            diff = readings[0].value - readings[1].value
-                            st.metric("Letzte Periode", f"{diff:,.2f} {um.unit}")
-                    else:
-                        st.info("Keine Ablesungen")
+                render_meter_card(um, indent=True)
 
 st.divider()
 

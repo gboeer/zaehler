@@ -17,6 +17,18 @@ UNITS = {"Strom": "kWh", "Gas": "m³", "Wasser": "m³"}
 TYPE_ICONS = {"Strom": "⚡", "Gas": "🔥", "Wasser": "💧"}
 
 
+def get_descendant_ids(meter_id: int, all_meters: list) -> set:
+    """Liefert alle transitiven Kind-IDs eines Zählers (nicht nur direkte Kinder)."""
+    descendants = set()
+    frontier = {meter_id}
+    while frontier:
+        children = {m.id for m in all_meters if m.parent_id in frontier}
+        children -= descendants
+        descendants |= children
+        frontier = children
+    return descendants
+
+
 def edit_meter_form(meter: Meter, all_meters: list, session):
     with st.form(f"edit_meter_{meter.id}"):
         col1, col2 = st.columns(2)
@@ -38,9 +50,9 @@ def edit_meter_form(meter: Meter, all_meters: list, session):
             )
             e_active = st.checkbox("Aktiv", value=bool(meter.active), key=f"a_{meter.id}")
 
-            # Elternauswahl: nicht sich selbst oder eigene Kinder
-            child_ids = {m.id for m in all_meters if m.parent_id == meter.id}
-            candidates = [m for m in all_meters if m.id != meter.id and m.id not in child_ids]
+            # Elternauswahl: nicht sich selbst oder eigene (transitiven) Kinder
+            descendant_ids = get_descendant_ids(meter.id, all_meters)
+            candidates = [m for m in all_meters if m.id != meter.id and m.id not in descendant_ids]
             parent_options = {"— kein (Hauptzähler)": None} | {
                 f"{m.name} ({m.meter_number or 'Nr. unbekannt'})": m.id
                 for m in candidates

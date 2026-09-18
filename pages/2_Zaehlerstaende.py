@@ -113,12 +113,24 @@ else:
                     delete = st.form_submit_button("Löschen", type="secondary")
 
                 if save:
-                    reading.reading_date = e_date
-                    reading.value = e_value
-                    reading.note = e_note or None
-                    session.commit()
-                    st.success("Gespeichert.")
-                    st.rerun()
+                    duplicate = (
+                        session.query(Reading)
+                        .filter(
+                            Reading.meter_id == meter.id,
+                            Reading.reading_date == e_date,
+                            Reading.id != reading.id,
+                        )
+                        .first()
+                    )
+                    if duplicate:
+                        st.error(f"Es existiert bereits ein Eintrag für {e_date.strftime('%d.%m.%Y')}.")
+                    else:
+                        reading.reading_date = e_date
+                        reading.value = e_value
+                        reading.note = e_note or None
+                        session.commit()
+                        st.success("Gespeichert.")
+                        st.rerun()
 
                 if delete:
                     session.delete(reading)

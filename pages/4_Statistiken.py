@@ -66,6 +66,11 @@ max_date = daily_df["date"].max().date()
 date_from = st.sidebar.date_input("Von", value=min_date, min_value=min_date, max_value=max_date)
 date_to = st.sidebar.date_input("Bis", value=max_date, min_value=min_date, max_value=max_date)
 
+if date_from > date_to:
+    st.sidebar.error("„Von“ muss vor oder gleich „Bis“ liegen.")
+    session.close()
+    st.stop()
+
 daily_filtered = daily_df[
     (daily_df["date"].dt.date >= date_from) & (daily_df["date"].dt.date <= date_to)
 ].copy()
