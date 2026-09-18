@@ -170,7 +170,7 @@ with tab_verlauf:
             annotation_position="top right",
         )
         fig_bar.update_layout(margin=dict(t=20, b=20))
-        st.plotly_chart(fig_bar, use_container_width=True)
+        st.plotly_chart(fig_bar, width='stretch')
 
     # Zählerstandsverlauf
     st.subheader("Zählerstandsverlauf")
@@ -194,7 +194,7 @@ with tab_verlauf:
         name="Ablesungen",
     )
     fig_val.update_layout(margin=dict(t=20, b=20))
-    st.plotly_chart(fig_val, use_container_width=True)
+    st.plotly_chart(fig_val, width='stretch')
 
 
 # =========================================================
@@ -265,7 +265,7 @@ with tab_taeglich:
             margin=dict(t=40, b=20),
             hovermode="x unified",
         )
-        st.plotly_chart(fig_daily, use_container_width=True)
+        st.plotly_chart(fig_daily, width='stretch')
 
         # Jahresvergleich (wenn Daten > 1 Jahr)
         if span_days > 400:
@@ -294,7 +294,7 @@ with tab_taeglich:
                                             "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]},
             )
             fig_year.update_layout(margin=dict(t=20, b=20))
-            st.plotly_chart(fig_year, use_container_width=True)
+            st.plotly_chart(fig_year, width='stretch')
 
 
 # =========================================================
@@ -362,7 +362,7 @@ if has_children and tab_aufteilung is not None:
                 hole=0.35,
             )
             fig_pie.update_traces(textinfo="label+percent+value")
-            st.plotly_chart(fig_pie, use_container_width=True)
+            st.plotly_chart(fig_pie, width='stretch')
 
         st.divider()
         st.subheader("Verbrauch über Zeit (gestapelt)")
@@ -394,7 +394,7 @@ if has_children and tab_aufteilung is not None:
                     labels={"period": "Zeitraum", "consumption": f"Verbrauch ({meter.unit})"},
                 )
                 fig_stack.update_layout(margin=dict(t=20, b=20))
-                st.plotly_chart(fig_stack, use_container_width=True)
+                st.plotly_chart(fig_stack, width='stretch')
         else:
             st.info("Zu wenig Daten der Unterzähler für die Zeitreihe.")
 

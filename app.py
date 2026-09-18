@@ -126,6 +126,6 @@ for meter in all_meters:
         labels={"reading_date": "Datum", "consumption": f"Verbrauch ({meter.unit})"},
     )
     fig.update_layout(showlegend=False, margin=dict(t=40, b=20))
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 session.close()
