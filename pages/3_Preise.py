@@ -202,6 +202,9 @@ else:
                             key=f"zz_{price.id}",
                         )
 
+                confirm_delete = st.checkbox(
+                    "Ja, diesen Preis-Eintrag wirklich löschen", key=f"confirm_del_{price.id}"
+                )
                 col_save, col_del = st.columns(2)
                 with col_save:
                     save = st.form_submit_button("Speichern", type="primary")
@@ -221,9 +224,12 @@ else:
                     st.rerun()
 
                 if delete:
-                    session.delete(price)
-                    session.commit()
-                    st.success("Preis gelöscht.")
-                    st.rerun()
+                    if not confirm_delete:
+                        st.warning("Bitte zuerst die Löschbestätigung ankreuzen.")
+                    else:
+                        session.delete(price)
+                        session.commit()
+                        st.success("Preis gelöscht.")
+                        st.rerun()
 
 session.close()

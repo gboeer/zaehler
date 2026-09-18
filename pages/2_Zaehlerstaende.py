@@ -106,6 +106,9 @@ else:
                 with col2:
                     e_note = st.text_area("Notiz", value=reading.note or "", key=f"no_{reading.id}")
 
+                confirm_delete = st.checkbox(
+                    "Ja, diesen Eintrag wirklich löschen", key=f"confirm_del_{reading.id}"
+                )
                 col_save, col_del = st.columns(2)
                 with col_save:
                     save = st.form_submit_button("Speichern", type="primary")
@@ -133,9 +136,12 @@ else:
                         st.rerun()
 
                 if delete:
-                    session.delete(reading)
-                    session.commit()
-                    st.success("Eintrag gelöscht.")
-                    st.rerun()
+                    if not confirm_delete:
+                        st.warning("Bitte zuerst die Löschbestätigung ankreuzen.")
+                    else:
+                        session.delete(reading)
+                        session.commit()
+                        st.success("Eintrag gelöscht.")
+                        st.rerun()
 
 session.close()

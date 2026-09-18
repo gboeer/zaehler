@@ -69,6 +69,13 @@ def edit_meter_form(meter: Meter, all_meters: list, session):
             )
             e_parent_id = parent_options[e_parent_label]
 
+        reading_count = len(meter.readings)
+        price_count = len(meter.prices)
+        confirm_delete = st.checkbox(
+            f"Ja, „{meter.name}“ inkl. {reading_count} Ablesung(en) und "
+            f"{price_count} Preis-Eintrag/Einträgen wirklich löschen",
+            key=f"confirm_del_{meter.id}",
+        )
         col_save, col_del = st.columns(2)
         with col_save:
             save = st.form_submit_button("Speichern", type="primary")
@@ -91,6 +98,8 @@ def edit_meter_form(meter: Meter, all_meters: list, session):
             has_children = any(m.parent_id == meter.id for m in all_meters)
             if has_children:
                 st.error("Zähler hat noch Unterzähler — bitte diese zuerst löschen oder umhängen.")
+            elif not confirm_delete:
+                st.warning("Bitte zuerst die Löschbestätigung ankreuzen.")
             else:
                 session.delete(meter)
                 session.commit()
